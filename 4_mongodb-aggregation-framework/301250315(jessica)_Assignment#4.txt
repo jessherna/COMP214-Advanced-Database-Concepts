@@ -1,0 +1,171 @@
+************************
+Question 1:
+************************
+
+db.listingsAndReviews.aggregate([
+    {
+        $match: {
+            "host.host_picture_url": { $exists: true, $ne: "" },
+            $expr: { $gte: [{ $size: "$host.host_verifications" }, 3] }
+        }
+    },
+    {
+        $project: {
+            listing_url: 1,
+            name: 1,
+            address: 1,
+            host_verifications: "$host.host_verifications",
+            size_of_host_verifications: { $size: "$host.host_verifications" },
+            host_image_url: "$host.host_picture_url"
+        }
+    }
+]);
+
+
+************************
+Question 2:
+************************
+
+db.movies.aggregate([
+  // Stage 1: Group by rating and year to calculate average IMDb rating
+  {
+    $group: {
+      _id: { 
+        rating: "$rated", 
+        year: { $year: "$released" }
+      },
+      avgRating: { $avg: "$imdb.rating" },
+      movies: { 
+        $push: { 
+          title: "$title", 
+          rating: "$imdb.rating" 
+        } 
+      }
+    }
+  },
+  // Stage 2: Sort within each rating category by average rating descending
+  {
+    $sort: { "_id.rating": 1, "avgRating": -1 }
+  },
+  // Stage 3: Keep only the top year for each rating category
+  {
+    $group: {
+      _id: "$_id.rating",
+      topYear: { $first: "$_id.year" },
+      highestAvgRating: { $first: "$avgRating" },
+      movies: { $first: "$movies" }
+    }
+  },
+  // Stage 4: Project the desired fields
+  {
+    $project: {
+      _id: 0,
+      ratingCategory: "$_id",
+      year: "$topYear",
+      averageRating: { $round: ["$highestAvgRating", 2] },
+      movies: 1
+    }
+  },
+  // Stage 5: Sort by rating category
+  {
+    $sort: { ratingCategory: 1 }
+  }
+]).forEach(result => {
+  print(`\nRating Category: ${result.ratingCategory}`);
+  print(`Year with Highest Average Rating: ${result.year}`);
+  print(`Average Rating: ${result.averageRating}`);
+  print("Movies:");
+  result.movies
+    .sort((a, b) => b.rating - a.rating)
+    .forEach(movie => print(`  - ${movie.title} (IMDb: ${movie.rating})`));
+});
+
+************************
+Question 3:
+************************
+
+db.restaurants.aggregate([
+    {
+        $match: {
+            cuisine: /Pizza/i
+        }
+    },
+    {
+        $unwind: "$grades"
+    },
+    {
+        $group: {
+            _id: "$name",
+            address: { $first: "$address" },
+            cuisine: { $first: "$cuisine" },
+            average_score: { $avg: "$grades.score" }
+        }
+    },
+    {
+        $sort: { average_score: -1 }
+    },
+    {
+        $limit: 1
+    }
+])
+
+************************
+Question 4:
+************************
+
+db.restaurants.aggregate([
+    {
+        $match: {
+            cuisine: "Turkish",
+            "grades.grade": "A"
+        }
+    },
+    {
+        $unwind: "$grades"
+    },
+    {
+        $match: {
+            "grades.grade": "A"
+        }
+    },
+    {
+        $group: {
+            _id: "$name",
+            count_A_grades: { $sum: 1 }
+        }
+    },
+    {
+        $sort: { count_A_grades: -1 }
+    },
+    {
+        $limit: 1
+    }
+])
+
+
+************************
+Question 5:
+************************
+
+db.restaurants.aggregate([
+    {
+        $match: {
+            cuisine: "Chinese"
+        }
+    },
+    {
+        $unwind: "$grades"
+    },
+    {
+        $group: {
+            _id: "$name",
+            average_score: { $avg: "$grades.score" }
+        }
+    },
+    {
+        $sort: { average_score: -1 }
+    },
+    {
+        $limit: 5
+    }
+])

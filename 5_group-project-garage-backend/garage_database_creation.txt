@@ -1,0 +1,409 @@
+-- Drop existing tables to avoid conflicts
+DROP TABLE ad_payments CASCADE CONSTRAINTS;
+DROP TABLE ad_workorders CASCADE CONSTRAINTS;
+DROP TABLE ad_services CASCADE CONSTRAINTS;
+DROP TABLE ad_customers CASCADE CONSTRAINTS;
+DROP TABLE ad_vehicles CASCADE CONSTRAINTS;
+DROP TABLE service_schedule CASCADE CONSTRAINTS;
+DROP TABLE ad_garage_config CASCADE CONSTRAINTS;
+
+-- Reset sequences
+DROP SEQUENCE workorder_id_seq;
+CREATE SEQUENCE workorder_id_seq START WITH 1001 INCREMENT BY 1;
+DROP SEQUENCE payment_id_seq;
+CREATE SEQUENCE payment_id_seq START WITH 1001 INCREMENT BY 1;
+
+-- Create ad_customers table
+CREATE TABLE ad_customers (
+    customer_id NUMBER(10) PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    phone VARCHAR(20),
+    email VARCHAR(100) NOT NULL,
+    address VARCHAR(200)
+);
+
+-- Create ad_vehicles table
+CREATE TABLE ad_vehicles (
+    vin VARCHAR(20) PRIMARY KEY,
+    year NUMBER(10),
+    --last_service_date DATE
+    mileage NUMBER(10) NOT NULL,
+    customer_id NUMBER(10),
+    model_name VARCHAR(100),
+    maker VARCHAR(50),
+    engine_type VARCHAR(50) CHECK (UPPER(engine_type) IN ('HYBRID', 'GAS', 'DIESEL', 'ELECTRIC')),
+    plate_number VARCHAR(50) NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES ad_customers(customer_id)
+);
+
+-- Create ad_services table
+CREATE TABLE ad_services (
+    service_id NUMBER(10) PRIMARY KEY,
+    service_name VARCHAR(100) NOT NULL,
+    service_description VARCHAR(200),
+    service_price NUMBER(10) NOT NULL
+);
+
+-- Create maintenance_schedule table
+CREATE TABLE service_schedule (
+    schedule_id NUMBER(10) PRIMARY KEY,
+    vin VARCHAR(20),
+    service_id NUMBER(10),
+    FOREIGN KEY (vin) REFERENCES ad_vehicles(vin),
+    FOREIGN KEY (service_id) REFERENCES ad_services(service_id)
+);
+
+-- Create ad_workorders table
+CREATE TABLE ad_workorders (
+    workorder_id NUMBER(10) PRIMARY KEY,
+    vin VARCHAR(20),
+    start_date DATE,
+    end_date DATE,
+    schedule_id NUMBER(10),
+    workorder_status VARCHAR(200) CHECK(UPPER(workorder_status) IN ('PENDING', 'IN PROGRESS', 'COMPLETED')),
+    FOREIGN KEY (vin) REFERENCES ad_vehicles(vin),
+    FOREIGN KEY (schedule_id) REFERENCES service_schedule(schedule_id)
+);
+
+-- Create ad_payments table
+CREATE TABLE ad_payments (
+    payment_id NUMBER(10) PRIMARY KEY,
+    workorder_id NUMBER(10) UNIQUE NOT NULL,
+    payment_date DATE,
+    payment_status VARCHAR(50)CHECK(UPPER(payment_status) IN ('PAID', 'PENDING')),
+    FOREIGN KEY (workorder_id) REFERENCES ad_workorders(workorder_id)
+);
+
+CREATE TABLE ad_garage_config (
+    max_capacity NUMBER(10) DEFAULT 10
+);
+
+-- Insert data into ad_customers
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(1, 'John', 'Doe', '555-0101', 'john.doe@email.com', '123 Queen St W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(2, 'Jane', 'Smith', '555-0102', 'jane.smith@email.com', '456 King St E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(3, 'Bob', 'Johnson', '555-0103', 'bob.johnson@email.com', '789 Dundas St W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(4, 'Alice', 'Williams', '555-0104', 'alice.williams@email.com', '321 Bloor St E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(5, 'Charlie', 'Brown', '555-0105', 'charlie.brown@email.com', '654 College St, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(6, 'Diana', 'Davis', '555-0106', 'diana.davis@email.com', '987 Gerrard St E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(7, 'Edward', 'Miller', '555-0107', 'edward.miller@email.com', '147 Bathurst St, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(8, 'Fiona', 'Wilson', '555-0108', 'fiona.wilson@email.com', '258 Richmond St W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(9, 'George', 'Moore', '555-0109', 'george.moore@email.com', '369 Front St E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(10, 'Hannah', 'Taylor', '555-0110', 'hannah.taylor@email.com', '741 Spadina Ave, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(11, 'Nathaniel', 'King', '555-0111', 'nathaniel.king@email.com', '3200 Islington Ave, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(12, 'Olivia', 'Lee', '555-0112', 'olivia.lee@email.com', '3300 Finch Ave W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(13, 'Paul', 'Scott', '555-0113', 'paul.scott@email.com', '3400 Bathurst St, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(14, 'Quinn', 'Bell', '555-0114', 'quinn.bell@email.com', '3500 York Mills Rd, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(15, 'Riley', 'Adams', '555-0115', 'riley.adams@email.com', '3600 Dundas St W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(16, 'Samantha', 'Price', '555-0116', 'samantha.price@email.com', '3700 Victoria Park Ave, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(17, 'Thomas', 'Green', '555-0117', 'thomas.green@email.com', '3800 Lawrence Ave W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(18, 'Ursula', 'Wright', '555-0118', 'ursula.wright@email.com', '3900 Bloor St E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(19, 'Victor', 'Harris', '555-0119', 'victor.harris@email.com', '4000 Queen St W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(20, 'Wendy', 'Clark', '555-0120', 'wendy.clark@email.com', '4100 Sheppard Ave W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(21, 'Yvonne', 'Morris', '555-0121', 'yvonne.morris@email.com', '4200 Finch Ave E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(22, 'Zach', 'Roberts', '555-0122', 'zach.roberts@email.com', '4300 Lawrence Ave E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(23, 'Anna', 'Hughes', '555-0123', 'anna.hughes@email.com', '4400 Kipling Ave, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(24, 'Brian', 'Phillips', '555-0124', 'brian.phillips@email.com', '4500 Don Mills Rd, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(25, 'Catherine', 'Price', '555-0125', 'catherine.price@email.com', '4600 Eglinton Ave W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(26, 'David', 'Sullivan', '555-0126', 'david.sullivan@email.com', '4700 Jane St, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(27, 'Ella', 'Morris', '555-0127', 'ella.morris@email.com', '4800 Wilson Ave, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(28, 'Frank', 'Wright', '555-0128', 'frank.wright@email.com', '4900 St. Clair Ave E, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(29, 'Grace', 'Foster', '555-0129', 'grace.foster@email.com', '5000 Lawrence Ave W, Toronto, ON, Canada');
+INSERT INTO ad_customers (customer_id, first_name, last_name, phone, email, address) VALUES
+(30, 'Henry', 'Turner', '555-0130', 'henry.turner@email.com', '5100 Victoria Park Ave, Toronto, ON, Canada');
+
+-- Insert data into ad_vehicles (with more realistic VINs)
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1HGCM82633A123456', 2018, 35000, 1, 'Civic', 'Honda', 'GAS', 'ABC123');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('2T1BURHE0KC123456', 2019, 28000, 2, 'Corolla', 'Toyota', 'HYBRID', 'DEF456');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('5YJ3E1EA1LF123456', 2020, 22000, 3, 'Model 3', 'Tesla', 'ELECTRIC', 'GHI789');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1FTEW1E53JFC12345', 2017, 45000, 4, 'F-150', 'Ford', 'GAS', 'JKL012');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('5UXCR6C55KLL12345', 2021, 15000, 5, 'X5', 'BMW', 'HYBRID', 'MNO345');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1N4BL4BV3KC123456', 2016, 60000, 6, 'Altima', 'Nissan', 'GAS', 'PQR678');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('WDDZF4JB6KA123456', 2022, 8000, 7, 'E-Class', 'Mercedes', 'DIESEL', 'STU901');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('2HKRW2H54JH123456', 2019, 32000, 8, 'CRV', 'Honda', 'GAS', 'VWX234');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('JN8AT2MT1LW123456', 2020, 25000, 9, 'Rogue', 'Nissan', 'GAS', 'YZA567');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1N4AZ1CP8LC123456', 2021, 18000, 10, 'Leaf', 'Nissan', 'ELECTRIC', 'BCD890');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('3C4NJDCB6JT123456', 2018, 35000, 11, 'Compass', 'Jeep', 'GAS', 'EFG123');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('5TDDZ3DC0KS123456', 2019, 28000, 12, 'Highlander', 'Toyota', 'GAS', 'HIJ456');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1FADP3K24JL123456', 2020, 22000, 13, 'Focus', 'Ford', 'GAS', 'KLM789');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1C4RJFCG8JC123456', 2017, 45000, 14, 'Grand Cherokee', 'Jeep', 'GAS', 'NOP012');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('5XYKT3A67MG123456', 2021, 15000, 15, 'Sportage', 'Kia', 'GAS', 'QRS345');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1G1BE5SM0K7123456', 2016, 60000, 16, 'Cruze', 'Chevrolet', 'GAS', 'TUV678');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1HGBH41JXMN123456', 2022, 8000, 17, '328i', 'BMW', 'GAS', 'WXY901');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('2T1BURHE0LC123456', 2019, 32000, 18, 'Camry', 'Toyota', 'HYBRID', 'YZA234');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('3N1AB7AP1JL123456', 2020, 25000, 19, 'Sentra', 'Nissan', 'GAS', 'BCD567');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1FTEW1C52JK123456', 2021, 18000, 20, 'F-250', 'Ford', 'GAS', 'EFG890');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1FADP3J29JL123456', 2018, 35000, 21, 'Escape', 'Ford', 'GAS', 'HIJ123');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('5NPE24AF2KH123456', 2019, 28000, 22, 'Sonata', 'Hyundai', 'GAS', 'JKL456');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('3TMCZ5AN8LM123456', 2020, 22000, 23, 'Tacoma', 'Toyota', 'GAS', 'MNO789');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1G1BE5SM9K712345', 2017, 45000, 24, 'Malibu', 'Chevrolet', 'GAS', 'PQR012');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1C4PJMCB6KD123456', 2021, 15000, 25, 'Cherokee', 'Jeep', 'GAS', 'STU345');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1FMCU0GD8KUA12345', 2016, 60000, 26, 'Escape', 'Ford', 'GAS', 'VWX678');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('2C4RC1BG1KR123456', 2022, 8000, 27, 'Pacifica', 'Chrysler', 'HYBRID', 'YZA901');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('3GCUKSEC3KG123456', 2019, 32000, 28, 'Silverado', 'Chevrolet', 'GAS', 'BCD234');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('5J6YH2H25KL123456', 2020, 25000, 29, 'CR-V', 'Honda', 'GAS', 'EFG567');
+INSERT INTO ad_vehicles (vin, year, mileage, customer_id, model_name, maker, engine_type, plate_number) VALUES
+('1FMSK8D94MGA12345', 2021, 18000, 30, 'Explorer', 'Ford', 'GAS', 'HIJ890');
+
+-- Insert data into ad_services
+INSERT INTO ad_services (service_id, service_name, service_description, service_price) VALUES
+(1, 'Oil Change', 'Regular oil change service', 149);
+INSERT INTO ad_services (service_id, service_name, service_description, service_price) VALUES
+(2, 'Tire Rotation', 'Rotate tires for even wear', 70);
+INSERT INTO ad_services (service_id, service_name, service_description, service_price) VALUES
+(3, 'Brake Service', 'Inspect and replace brake pads if needed', 90);
+INSERT INTO ad_services (service_id, service_name, service_description, service_price) VALUES
+(4, 'Battery Replacement', 'Replace car battery', 129);
+INSERT INTO ad_services (service_id, service_name, service_description, service_price) VALUES
+(5, 'Air Filter Replacement', 'Replace engine air filter', 25);
+
+-- Insert data into service_schedule
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(1, '1HGCM82633A123456', 1);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(2, '2T1BURHE0KC123456', 2);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(3, '5YJ3E1EA1LF123456', 1);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(4, '1FTEW1E53JFC12345', 5);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(5, '5UXCR6C55KLL12345', 2);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(6, '1N4BL4BV3KC123456', 2);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(7, 'WDDZF4JB6KA123456', 3);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(8, '2HKRW2H54JH123456', 4);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(9, 'JN8AT2MT1LW123456', 1);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(10, '1N4AZ1CP8LC123456', 3);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(11, '1C4PJMCB6KD123456', 1);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(12, '1C4RJFCG8JC123456', 2);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(13, '1FADP3J29JL123456', 3);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(14, '1FADP3K24JL123456', 4);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(15, '1FMCU0GD8KUA12345', 5);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(16, '1FMSK8D94MGA12345', 1);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(17, '1FTEW1C52JK123456', 2);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(18, '1FTEW1E53JFC12345', 3);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(19, '1G1BE5SM0K7123456', 4);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(20, '1G1BE5SM9K712345', 5);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(21, '1HGBH41JXMN123456', 1);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(22, '1HGCM82633A123456', 2);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(23, '1N4AZ1CP8LC123456', 3);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(24, '1N4BL4BV3KC123456', 4);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(25, '2C4RC1BG1KR123456', 5);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(26, '2HKRW2H54JH123456', 1);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(27, '2T1BURHE0KC123456', 2);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(28, '2T1BURHE0LC123456', 3);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(29, '3C4NJDCB6JT123456', 4);
+INSERT INTO service_schedule (schedule_id, vin, service_id) VALUES
+(30, '5UXCR6C55KLL12345', 5);
+
+-- Insert data into ad_workorders
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1HGCM82633A123456', TO_DATE('2024-07-01', 'YYYY-MM-DD'), TO_DATE('2024-07-02', 'YYYY-MM-DD'), 1, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '2T1BURHE0KC123456', TO_DATE('2024-07-03', 'YYYY-MM-DD'), TO_DATE('2024-07-04', 'YYYY-MM-DD'), 2, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '5YJ3E1EA1LF123456', TO_DATE('2024-07-05', 'YYYY-MM-DD'), NULL, 3, 'IN PROGRESS');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1FTEW1E53JFC12345', TO_DATE('2024-07-07', 'YYYY-MM-DD'), TO_DATE('2024-07-08', 'YYYY-MM-DD'), 4, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '5UXCR6C55KLL12345', TO_DATE('2024-07-09', 'YYYY-MM-DD'), NULL, 5, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1N4BL4BV3KC123456', TO_DATE('2024-07-11', 'YYYY-MM-DD'), TO_DATE('2024-07-12', 'YYYY-MM-DD'), 6, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, 'WDDZF4JB6KA123456', TO_DATE('2024-07-13', 'YYYY-MM-DD'), NULL, 7, 'IN PROGRESS');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '2HKRW2H54JH123456', TO_DATE('2024-07-15', 'YYYY-MM-DD'), TO_DATE('2024-07-16', 'YYYY-MM-DD'), 8, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, 'JN8AT2MT1LW123456', TO_DATE('2024-07-17', 'YYYY-MM-DD'), NULL, 9, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1N4AZ1CP8LC123456', TO_DATE('2024-07-19', 'YYYY-MM-DD'), TO_DATE('2024-07-20', 'YYYY-MM-DD'), 10, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1C4PJMCB6KD123456', TO_DATE('2024-01-05', 'YYYY-MM-DD'), TO_DATE('2024-01-06', 'YYYY-MM-DD'), 1, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1C4RJFCG8JC123456', TO_DATE('2024-01-08', 'YYYY-MM-DD'), TO_DATE('2024-01-09', 'YYYY-MM-DD'), 2, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1FADP3J29JL123456', TO_DATE('2024-01-11', 'YYYY-MM-DD'), NULL, 3, 'IN PROGRESS');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1FADP3K24JL123456', TO_DATE('2024-01-14', 'YYYY-MM-DD'), TO_DATE('2024-01-15', 'YYYY-MM-DD'), 4, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1FMCU0GD8KUA12345', TO_DATE('2024-01-17', 'YYYY-MM-DD'), NULL, 5, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1FMSK8D94MGA12345', TO_DATE('2024-01-20', 'YYYY-MM-DD'), TO_DATE('2024-01-21', 'YYYY-MM-DD'), 6, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1FTEW1C52JK123456', TO_DATE('2024-01-23', 'YYYY-MM-DD'), TO_DATE('2024-01-24', 'YYYY-MM-DD'), 7, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1FTEW1E53JFC12345', TO_DATE('2024-01-26', 'YYYY-MM-DD'), NULL, 8, 'IN PROGRESS');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1G1BE5SM0K7123456', TO_DATE('2024-01-29', 'YYYY-MM-DD'), TO_DATE('2024-01-30', 'YYYY-MM-DD'), 9, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1G1BE5SM9K712345', TO_DATE('2024-02-01', 'YYYY-MM-DD'), NULL, 10, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '1HGBH41JXMN123456', TO_DATE('2024-02-04', 'YYYY-MM-DD'), TO_DATE('2024-02-05', 'YYYY-MM-DD'), 1, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '2C4RC1BG1KR123456', TO_DATE('2024-02-07', 'YYYY-MM-DD'), TO_DATE('2024-02-08', 'YYYY-MM-DD'), 2, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '2HKRW2H54JH123456', TO_DATE('2024-02-10', 'YYYY-MM-DD'), NULL, 3, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '2T1BURHE0KC123456', TO_DATE('2024-02-13', 'YYYY-MM-DD'), TO_DATE('2024-02-14', 'YYYY-MM-DD'), 4, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '2T1BURHE0LC123456', TO_DATE('2024-02-16', 'YYYY-MM-DD'), TO_DATE('2024-02-17', 'YYYY-MM-DD'), 5, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '3C4NJDCB6JT123456', TO_DATE('2024-02-19', 'YYYY-MM-DD'), NULL, 6, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '3GCUKSEC3KG123456', TO_DATE('2024-02-22', 'YYYY-MM-DD'), TO_DATE('2024-02-23', 'YYYY-MM-DD'), 7, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '3N1AB7AP1JL123456', TO_DATE('2024-02-25', 'YYYY-MM-DD'), NULL, 8, 'IN PROGRESS');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '3TMCZ5AN8LM123456', TO_DATE('2024-02-28', 'YYYY-MM-DD'), TO_DATE('2024-02-29', 'YYYY-MM-DD'), 9, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '5J6YH2H25KL123456', TO_DATE('2024-03-02', 'YYYY-MM-DD'), NULL, 10, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '5NPE24AF2KH123456', TO_DATE('2024-03-05', 'YYYY-MM-DD'), TO_DATE('2024-03-06', 'YYYY-MM-DD'), 1, 'COMPLETED');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status) VALUES
+(workorder_id_seq.NEXTVAL, '5TDDZ3DC0KS123456', TO_DATE('2024-03-08', 'YYYY-MM-DD'), TO_DATE('2024-03-09', 'YYYY-MM-DD'), 2, 'COMPLETED');
+
+-- Insert data into ad_payments
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1001, TO_DATE('2024-07-02', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1002, TO_DATE('2024-07-04', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1003, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1004, TO_DATE('2024-07-08', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1005, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1006, TO_DATE('2024-07-12', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1007, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1008, TO_DATE('2024-07-16', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1009, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1010, TO_DATE('2024-07-20', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1011, TO_DATE('2024-01-06', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1012, TO_DATE('2024-01-09', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1013, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1014, TO_DATE('2024-01-15', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1015, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1016, TO_DATE('2024-01-21', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1017, TO_DATE('2024-01-24', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1018, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1019, TO_DATE('2024-01-30', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1020, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1021, TO_DATE('2024-02-02', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1022, TO_DATE('2024-02-06', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1023, TO_DATE('2024-02-09', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1024, TO_DATE('2024-02-12', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1025, NULL, 'PENDING');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1026, TO_DATE('2024-02-18', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1027, TO_DATE('2024-02-21', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1028, TO_DATE('2024-02-24', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1029, TO_DATE('2024-02-27', 'YYYY-MM-DD'), 'PAID');
+INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status) VALUES
+(payment_id_seq.NEXTVAL, 1030, NULL, 'PENDING');
+
+-- Insert data into ad_garage_config
+INSERT INTO ad_garage_config (max_capacity) VALUES (10);

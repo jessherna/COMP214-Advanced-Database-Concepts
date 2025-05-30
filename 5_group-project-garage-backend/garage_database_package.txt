@@ -1,0 +1,235 @@
+/*
+PACKAGE
+*/
+-- Package specification
+CREATE OR REPLACE PACKAGE garage_pkg AS
+    -- Global variables
+    g_workorder_count NUMBER := 0;
+    g_last_updated DATE;
+
+    -- Procedures
+    PROCEDURE update_vehicle_mileage(
+        p_vin IN ad_vehicles.vin%TYPE,
+        p_new_mileage IN ad_vehicles.mileage%TYPE
+    );
+
+    PROCEDURE get_overdue_payments;
+
+    PROCEDURE count_vehicles_in_garage;
+
+    PROCEDURE insert_workorder(
+        p_vin IN ad_vehicles.vin%TYPE,
+        p_schedule_id IN service_schedule.schedule_id%TYPE,
+        p_start_date IN DATE DEFAULT SYSDATE
+    );
+
+    -- Functions
+    FUNCTION calculate_revenue(
+        p_start_date IN DATE,
+        p_end_date IN DATE
+    ) RETURN NUMBER;
+
+    FUNCTION get_customer_tier(
+        p_customer_id IN NUMBER
+    ) RETURN VARCHAR2;
+
+END garage_pkg;
+/
+
+-- Package body
+CREATE OR REPLACE PACKAGE BODY garage_pkg AS
+    -- Procedure to update vehicle mileage
+    PROCEDURE update_vehicle_mileage(
+        p_vin IN ad_vehicles.vin%TYPE,
+        p_new_mileage IN ad_vehicles.mileage%TYPE
+    ) IS
+    v_old_mileage NUMBER;
+    e_invalid_mileage EXCEPTION;
+    BEGIN
+        -- Get the current mileage
+        SELECT mileage INTO v_old_mileage
+        FROM ad_vehicles
+        WHERE vin = p_vin;
+
+        -- Check if new mileage is valid
+        IF p_new_mileage <= v_old_mileage THEN
+            RAISE e_invalid_mileage;
+        END IF;
+
+        -- Update the mileage
+        UPDATE ad_vehicles
+        SET mileage = p_new_mileage
+        WHERE vin = p_vin;
+
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Mileage updated successfully.');
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Vehicle not found.');
+        WHEN e_invalid_mileage THEN
+            DBMS_OUTPUT.PUT_LINE('New mileage must be greater than current mileage.');
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+            ROLLBACK;
+    END update_vehicle_mileage;
+
+    -- Procedure to get overdue payments
+    PROCEDURE get_overdue_payments IS
+        v_count NUMBER := 0;
+    BEGIN
+        FOR v_overdue_payment IN (
+            SELECT c.first_name, c.last_name, p.workorder_id, w.start_date, w.end_date
+            FROM ad_payments p
+            JOIN ad_workorders w ON p.workorder_id = w.workorder_id
+            JOIN ad_vehicles v ON w.vin = v.vin
+            JOIN ad_customers c ON v.customer_id = c.customer_id
+            WHERE p.payment_status = 'PENDING'
+            AND w.end_date IS NOT NULL
+            AND w.end_date < SYSDATE - 3
+        )
+        LOOP
+            DECLARE
+                v_days_overdue NUMBER;
+            BEGIN
+                v_days_overdue := SYSDATE - v_overdue_payment.end_date;
+                DBMS_OUTPUT.PUT_LINE('Customer: ' || v_overdue_payment.first_name || ' ' || v_overdue_payment.last_name ||
+                                     ', Workorder ID: ' || v_overdue_payment.workorder_id ||
+                                     ', Start Work: ' || TO_CHAR(v_overdue_payment.start_date, 'YYYY-MM-DD') ||
+                                     ', End Work: ' || TO_CHAR(v_overdue_payment.end_date, 'YYYY-MM-DD') ||
+                                     ', Days Overdue: ' || v_days_overdue);
+                v_count := v_count + 1;
+            END;
+        END LOOP;
+
+        IF v_count = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('No overdue payments found.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Total overdue payments: ' || v_count);
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+    END get_overdue_payments;
+
+    -- Procedure to count vehicles in the garage
+    PROCEDURE count_vehicles_in_garage IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*)
+        INTO v_count
+        FROM ad_workorders w
+        LEFT JOIN ad_payments p ON w.workorder_id = p.workorder_id
+        WHERE (w.workorder_status = 'IN PROGRESS'
+               OR (w.workorder_status = 'COMPLETED' AND p.payment_status = 'PENDING'));
+
+        DBMS_OUTPUT.PUT_LINE('Number of vehicles in garage: ' || v_count);
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+    END count_vehicles_in_garage;
+
+    -- Procedure to insert a work order
+    PROCEDURE insert_workorder(
+        p_vin IN ad_vehicles.vin%TYPE,
+        p_schedule_id IN service_schedule.schedule_id%TYPE,
+        p_start_date IN DATE DEFAULT SYSDATE
+    ) IS
+    BEGIN
+        INSERT INTO ad_workorders (
+            workorder_id, vin, start_date, schedule_id, workorder_status
+        ) VALUES (
+            workorder_id_seq.NEXTVAL, p_vin, p_start_date, p_schedule_id, 'PENDING'
+        );
+
+        -- Update global work order count
+        g_workorder_count := g_workorder_count + 1;
+        g_last_updated := SYSDATE; -- Set the last updated date to current date and time
+        DBMS_OUTPUT.PUT_LINE('Workorder added successfully.');
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('No vehicle found with the specified VIN.');
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+            ROLLBACK;
+    END insert_workorder;
+
+    -- Function to calculate revenue
+    FUNCTION calculate_revenue(
+        p_start_date IN DATE,
+        p_end_date IN DATE
+    ) RETURN NUMBER IS
+        v_total_revenue NUMBER := 0;
+    BEGIN
+        SELECT NVL(SUM(s.service_price), 0)
+        INTO v_total_revenue
+        FROM ad_workorders w
+        JOIN service_schedule ss ON w.schedule_id = ss.schedule_id
+        JOIN ad_services s ON ss.service_id = s.service_id
+        JOIN ad_payments p ON w.workorder_id = p.workorder_id
+        WHERE w.end_date BETWEEN p_start_date AND p_end_date
+        AND p.payment_status = 'PAID';
+
+        RETURN v_total_revenue;
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+            RETURN NULL;
+    END calculate_revenue;
+
+    -- Function to get customer tier
+    FUNCTION get_customer_tier(
+        p_customer_id IN NUMBER
+    ) RETURN VARCHAR2 IS
+        v_total_services NUMBER;
+    BEGIN
+        SELECT COUNT(*)
+        INTO v_total_services
+        FROM ad_workorders w
+        JOIN ad_vehicles v ON w.vin = v.vin
+        WHERE v.customer_id = p_customer_id
+        AND w.end_date IS NOT NULL;
+
+        RETURN CASE
+            WHEN v_total_services >= 2 THEN 'Gold'
+            WHEN v_total_services >= 1 THEN 'Silver'
+            ELSE 'Bronze'
+        END;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN 'Customer not found';
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+            RETURN NULL;
+    END get_customer_tier;
+
+END garage_pkg;
+/
+
+/*
+TEST updating and retrieving global variables
+*/
+
+BEGIN
+    -- Insert the first work order
+    auto_dealership_pkg.insert_workorder('1G1BE5SM9K712345', 1);
+    -- Insert the second work order
+    auto_dealership_pkg.insert_workorder( '3GCUKSEC3KG123456', 3);
+    -- Insert the third work order
+    auto_dealership_pkg.insert_workorder('2T1BURHE0LC123456', 5);
+    
+END;
+
+/
+DECLARE
+    v_workorder_count NUMBER;
+    v_last_updated DATE;
+    
+BEGIN
+    -- Retrieve and display the value of the global variable
+    v_workorder_count := garage_pkg.g_workorder_count;
+    v_last_updated := garage_pkg.g_last_updated;
+    
+    DBMS_OUTPUT.PUT_LINE('Workorder insert from packages: ' || v_workorder_count);
+    DBMS_OUTPUT.PUT_LINE('Last workorder inserted on: ' || TO_CHAR(v_last_updated, 'YYYY-MM-DD HH24:MI:SS'));
+END;
+/

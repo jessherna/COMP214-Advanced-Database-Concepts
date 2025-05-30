@@ -1,0 +1,166 @@
+--Procedures
+
+-- Procedure 1: Update vehicle mileage
+CREATE OR REPLACE PROCEDURE update_vehicle_mileage(
+    p_vin IN ad_vehicles.vin%TYPE,
+    p_new_mileage IN ad_vehicles.mileage%TYPE
+)
+IS
+    v_old_mileage NUMBER;
+    e_invalid_mileage EXCEPTION;
+BEGIN
+    -- Get the current mileage
+    SELECT mileage INTO v_old_mileage
+    FROM ad_vehicles
+    WHERE vin = p_vin;
+
+    -- Check if new mileage is valid
+    IF p_new_mileage <= v_old_mileage THEN
+        RAISE e_invalid_mileage;
+    END IF;
+
+    -- Update the mileage
+    UPDATE ad_vehicles
+    SET mileage = p_new_mileage
+    WHERE vin = p_vin;
+
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Mileage updated successfully.');
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Vehicle not found.');
+    WHEN e_invalid_mileage THEN
+        DBMS_OUTPUT.PUT_LINE('New mileage must be greater than current mileage.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+        ROLLBACK;
+END;
+/
+
+-- Testing Procedure 1:
+BEGIN
+    update_vehicle_mileage('1HGCM82633A123456', 77000);
+END;
+/
+
+-- Verify the update
+SELECT vin, mileage FROM ad_vehicles WHERE vin = '1HGCM82633A123456';
+
+
+
+-- Procedure 2: Get overdue payments (using cursor)
+CREATE OR REPLACE PROCEDURE get_overdue_payments
+IS
+    -- Variable to count the total number of overdue payments
+    v_count NUMBER := 0;
+BEGIN
+    -- Use a FOR loop with the cursor to iterate over overdue payments
+    FOR v_overdue_payment IN (
+        SELECT c.first_name, c.last_name, p.workorder_id, w.start_date, w.end_date
+        FROM ad_payments p
+        JOIN ad_workorders w ON p.workorder_id = w.workorder_id
+        JOIN ad_vehicles v ON w.vin = v.vin
+        JOIN ad_customers c ON v.customer_id = c.customer_id
+        WHERE p.payment_status = 'PENDING'
+        AND w.end_date IS NOT NULL
+        AND w.end_date < SYSDATE - 3
+    )
+    LOOP
+        -- Calculate the number of days overdue
+        DECLARE
+            v_days_overdue NUMBER;
+        BEGIN
+            v_days_overdue := SYSDATE - v_overdue_payment.end_date;
+            DBMS_OUTPUT.PUT_LINE('Customer: ' || v_overdue_payment.first_name || ' ' || v_overdue_payment.last_name ||
+                                 ', Workorder ID: ' || v_overdue_payment.workorder_id ||
+                                 ', Start Work: ' || TO_CHAR(v_overdue_payment.start_date, 'YYYY-MM-DD') ||
+                                 ', End Work: ' || TO_CHAR(v_overdue_payment.end_date, 'YYYY-MM-DD') ||
+                                 ', Days Overdue: ' || v_days_overdue);
+            v_count := v_count + 1; -- Increment the counter
+        END;
+    END LOOP;
+
+    -- Output the total count of overdue payments
+    IF v_count = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('No overdue payments found.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Total overdue payments: ' || v_count);
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+END;
+/
+
+-- Testing Procedure 2
+BEGIN
+    get_overdue_payments;
+END;
+/
+
+-- Procedure 3: Count vehicles currently in the garage
+CREATE OR REPLACE PROCEDURE count_vehicles_in_garage
+IS
+    v_count NUMBER; -- Variable to store the count of vehicles
+BEGIN
+    -- Count the number of vehicles in the garage
+    -- Considering completed workorders with pending payments
+   SELECT COUNT(*)
+    INTO v_count
+    FROM ad_workorders w
+    LEFT JOIN ad_payments p ON w.workorder_id = p.workorder_id
+    WHERE (w.workorder_status = 'IN PROGRESS'
+           OR (w.workorder_status = 'COMPLETED' AND p.payment_status = 'PENDING'));
+
+    -- Output the result
+    DBMS_OUTPUT.PUT_LINE('Number of vehicles in garage: ' || v_count);
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Handle exceptions and output the error message
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+END;
+/
+
+-- Testing Procedure 3
+BEGIN
+    count_vehicles_in_garage;
+END;
+/
+
+-- Procedure 4: Insert new Workorder
+CREATE OR REPLACE PROCEDURE insert_workorder(
+    p_vin IN ad_vehicles.vin%TYPE,  -- Vehicle Identification Number
+    p_schedule_id IN service_schedule.schedule_id%TYPE,  -- ID of the service schedule
+    p_start_date IN DATE DEFAULT SYSDATE
+) IS
+BEGIN
+    -- Insert a new work order into the ad_workorders table
+    INSERT INTO ad_workorders (
+        workorder_id, vin, start_date, schedule_id, workorder_status
+    ) VALUES (
+        workorder_id_seq.NEXTVAL, p_vin, p_start_date, p_schedule_id, 'PENDING'
+    );
+
+    DBMS_OUTPUT.PUT_LINE('Workorder added successfully.');
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No vehicle found with the specified VIN.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+        ROLLBACK; -- Rollback in case of error
+END;
+/
+
+-- Testing Procedure 4
+-- Insert a work order for testing
+BEGIN
+    insert_workorder('2T1BURHE0KC123456', 1);
+END;
+/
+
+-- Check if workorder entry was created
+SELECT * FROM ad_workorders;
+-- Check if payment entry was created
+SELECT * FROM ad_payments;

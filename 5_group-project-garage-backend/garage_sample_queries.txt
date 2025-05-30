@@ -1,0 +1,52 @@
+--Sample Queries
+--1. Retrieve all completed work orders with their payment status:
+SELECT w.workorder_id, w.vin, w.start_date, w.end_date, w.workorder_status, p.payment_status
+FROM ad_workorders w
+LEFT JOIN ad_payments p ON w.workorder_id = p.workorder_id
+WHERE w.workorder_status = 'COMPLETED';
+
+--2. Find all work orders that are still in progress:
+SELECT workorder_id, vin, start_date, end_date, schedule_id, workorder_status
+FROM ad_workorders
+WHERE workorder_status = 'IN PROGRESS';
+
+--3. Count the number of work orders for each vehicle:
+SELECT vin, COUNT(*) AS num_workorders
+FROM ad_workorders
+GROUP BY vin;
+
+--4. Find the latest payment date for each work order:
+SELECT workorder_id, MAX(payment_date) AS latest_payment_date
+FROM ad_payments
+GROUP BY workorder_id;
+
+--5. Get the total number of completed and pending work orders:
+SELECT workorder_status, COUNT(*) AS count
+FROM ad_workorders
+GROUP BY workorder_status;
+
+--6. List all vehicles that have at least one pending work order:
+SELECT DISTINCT w.vin
+FROM ad_workorders w
+WHERE w.workorder_status = 'PENDING';
+
+--7. Find the average duration of completed work orders:
+SELECT AVG(end_date - start_date) AS avg_duration
+FROM ad_workorders
+WHERE workorder_status = 'COMPLETED';
+
+--8. Get the payment status and amount (if available) for each work order:
+SELECT w.workorder_id, COALESCE(p.payment_status, 'NOT PAID') AS payment_status
+FROM ad_workorders w
+LEFT JOIN ad_payments p ON w.workorder_id = p.workorder_id;
+
+--9. Retrieve the list of all work orders that started and ended in the same month:
+SELECT workorder_id, vin, start_date, end_date
+FROM ad_workorders
+WHERE EXTRACT(MONTH FROM start_date) = EXTRACT(MONTH FROM end_date)
+AND EXTRACT(YEAR FROM start_date) = EXTRACT(YEAR FROM end_date);
+
+--10. Show the total number of payments for each payment status:
+SELECT payment_status, COUNT(*) AS total_payments
+FROM ad_payments
+GROUP BY payment_status;

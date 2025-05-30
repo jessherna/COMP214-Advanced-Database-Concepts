@@ -1,0 +1,99 @@
+/*
+INDEXES
+*/
+-- Index for ad_customers table
+-- This index will improve searches by customer last name
+CREATE INDEX idx_customer_last_name ON ad_customers(last_name);
+-- This index will improve searches by customer email
+CREATE INDEX idx_customer_email ON ad_customers(email);
+
+-- Indexes for ad_vehicles table
+-- This index will improve searches by license plate number
+CREATE INDEX idx_vehicle_plate ON ad_vehicles(plate_number);
+
+/*
+TRIGGERS
+*/
+
+-- Trigger to create a payment entry when a workorder is created
+CREATE OR REPLACE TRIGGER trg_create_payment
+AFTER INSERT ON ad_workorders
+FOR EACH ROW
+BEGIN
+    INSERT INTO ad_payments (payment_id, workorder_id, payment_date, payment_status)
+    VALUES (
+        payment_id_seq.NEXTVAL, :NEW.workorder_id, NULL, 'PENDING'
+    );
+END;
+/
+-- Trigger to update payment date when payment status changes to 'PAID'
+CREATE OR REPLACE TRIGGER trg_update_payment
+BEFORE UPDATE OF payment_status ON ad_payments
+FOR EACH ROW
+BEGIN
+    IF :NEW.payment_status = 'PAID' AND :OLD.payment_status = 'PENDING' THEN
+        :NEW.payment_date := SYSDATE;
+    END IF;
+END;
+/
+-- Trigger to check garage capacity before inserting a new work order
+CREATE OR REPLACE TRIGGER trg_check_garage_capacity
+BEFORE INSERT ON ad_workorders
+FOR EACH ROW
+DECLARE
+    v_current_capacity NUMBER;  -- Current number of vehicles in the garage
+    v_max_capacity NUMBER;      -- Maximum capacity of the garage
+BEGIN
+    -- Get the current number of vehicles in the garage
+    SELECT COUNT(*)
+    INTO v_current_capacity
+    FROM ad_workorders w
+    LEFT JOIN ad_payments p ON w.workorder_id = p.workorder_id
+    WHERE w.workorder_status IN ('IN PROGRESS', 'COMPLETED')
+    AND p.payment_id IS NULL; -- Vehicles that have not been paid for
+
+    -- Get the maximum capacity of the garage
+    SELECT max_capacity
+    INTO v_max_capacity
+    FROM ad_garage_config;
+
+    -- Check if the current number of vehicles has reached the maximum capacity
+    IF v_current_capacity >= v_max_capacity THEN
+        RAISE_APPLICATION_ERROR(
+            -20001, 
+            'Garage is full. Please wait until a vehicle is removed before adding a new work order.'
+        );
+    END IF;
+END;
+/
+
+
+/*
+TEST trg_update_payment TRIGGER (add date of payment when order is paid)
+*/
+-- Update the payment_status to 'PAID'
+UPDATE ad_payments 
+SET payment_status = 'PAID'
+WHERE workorder_id = 1034;
+
+/*
+TEST trg_create_payment TRIGGER (add payment after workorders is created)
+*/
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status)
+VALUES (workorder_id_seq.NEXTVAL, '5YJ3E1EA1LF123456', SYSDATE, null, 1, 'PENDING');
+
+/*
+TEST trg_check_garage_capacity TRIGGER (add payment after workorders is created)
+*/
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status)
+VALUES (workorder_id_seq.NEXTVAL, '1FMCU0GD8KUA12345', SYSDATE, null, 1, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status)
+VALUES (workorder_id_seq.NEXTVAL, '1FMSK8D94MGA12345', SYSDATE, null, 1, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status)
+VALUES (workorder_id_seq.NEXTVAL, '1FTEW1C52JK123456', SYSDATE, null, 1, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status)
+VALUES (workorder_id_seq.NEXTVAL, 'WDDZF4JB6KA123456', SYSDATE, null, 1, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status)
+VALUES (workorder_id_seq.NEXTVAL, '2HKRW2H54JH123456', SYSDATE, null, 1, 'PENDING');
+INSERT INTO ad_workorders (workorder_id, vin, start_date, end_date, schedule_id, workorder_status)
+VALUES (workorder_id_seq.NEXTVAL, 'JN8AT2MT1LW123456', SYSDATE, null, 1, 'PENDING');

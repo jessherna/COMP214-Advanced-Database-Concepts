@@ -1,0 +1,96 @@
+-- Function 1: Calculate total revenue for a given date range
+CREATE OR REPLACE FUNCTION calculate_revenue(
+    p_start_date IN DATE,
+    p_end_date IN DATE
+) RETURN NUMBER
+IS
+    v_total_revenue NUMBER := 0;
+BEGIN
+    SELECT NVL(SUM(s.service_price), 0)
+    INTO v_total_revenue
+    FROM ad_workorders w
+    JOIN service_schedule ss ON w.schedule_id = ss.schedule_id
+    JOIN ad_services s ON ss.service_id = s.service_id
+    JOIN ad_payments p ON w.workorder_id = p.workorder_id
+    WHERE w.end_date BETWEEN p_start_date AND p_end_date
+    AND p.payment_status = 'PAID';
+
+    RETURN v_total_revenue;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+        RETURN NULL;
+END;
+/
+
+-- Function 2: Get customer loyalty tier
+CREATE OR REPLACE FUNCTION get_customer_tier(
+    p_customer_id IN NUMBER
+) RETURN VARCHAR2
+IS
+    v_total_services NUMBER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_total_services
+    FROM ad_workorders w
+    JOIN ad_vehicles v ON w.vin = v.vin
+    WHERE v.customer_id = p_customer_id
+    AND w.end_date IS NOT NULL;
+
+    RETURN CASE
+        WHEN v_total_services >= 2 THEN 'Gold'
+        WHEN v_total_services >= 1 THEN 'Silver'
+        ELSE 'Bronze'
+    END;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN 'Customer not found';
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+        RETURN NULL;
+END;
+/
+
+/*
+TEST calculate revenue function
+*/
+-- Test the function with a specific date range
+DECLARE
+    v_revenue NUMBER;
+BEGIN
+    -- Call the function and store the result in v_revenue
+    v_revenue := calculate_revenue(TO_DATE('2024-01-01', 'YYYY-MM-DD'), TO_DATE('2024-02-01', 'YYYY-MM-DD'));
+    
+    -- Output the result
+    DBMS_OUTPUT.PUT_LINE('Total revenue from 2024-01-01 to 2024-02-01: $' || v_revenue);
+END;
+/
+
+/*
+TEST get_customer_tier function
+*/
+DECLARE
+    -- Variables to hold customer information and loyalty tier
+    v_customer_id ad_customers.customer_id%TYPE;
+    v_customer_name VARCHAR2(100);
+    v_loyalty_tier VARCHAR2(20);
+    
+    -- Cursor to iterate over all customers
+    CURSOR c_customers IS
+        SELECT customer_id, first_name || ' ' || last_name AS customer_name
+        FROM ad_customers;
+BEGIN
+    -- Open the cursor and fetch each customer
+    FOR rec IN c_customers LOOP
+        v_customer_id := rec.customer_id;
+        v_customer_name := rec.customer_name;
+        
+        -- Call the function and get the loyalty tier for the current customer
+        v_loyalty_tier := get_customer_tier(v_customer_id);
+        
+        -- Output the result
+        DBMS_OUTPUT.PUT_LINE('Customer: ' || v_customer_name || 
+                             ', Loyalty Tier: ' || NVL(v_loyalty_tier, 'Unknown'));
+    END LOOP;
+END;
+/
